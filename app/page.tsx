@@ -2,6 +2,7 @@
 
 import mapboxgl from "mapbox-gl";
 import { useEffect, useRef } from "react";
+import type { Adventure } from "@/types/adventure";
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
 
@@ -24,7 +25,7 @@ export default function HomePage() {
 
       if (!data) return;
 
-      data.forEach((adventure: any) => {
+      data.forEach((adventure: Adventure) => {
         new mapboxgl.Marker()
           .setLngLat([adventure.longitude, adventure.latitude])
           .setPopup(
