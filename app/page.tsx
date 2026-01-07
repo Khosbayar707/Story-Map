@@ -14,14 +14,31 @@ export default function HomePage() {
     const map = new mapboxgl.Map({
       container: mapContainer.current,
       style: "mapbox://styles/mapbox/streets-v12",
-      center: [0, 20],
-      zoom: 2,
+      center: [106.9057, 47.8864],
+      zoom: 5,
     });
 
-    new mapboxgl.Marker()
-      .setLngLat([106.920926, 47.922478])
-      .setPopup(new mapboxgl.Popup().setText("First Adventure!"))
-      .addTo(map);
+    const loadAdventures = async () => {
+      const res = await fetch("/api/adventures");
+      const { data } = await res.json();
+
+      if (!data) return;
+
+      data.forEach((adventure: any) => {
+        new mapboxgl.Marker()
+          .setLngLat([adventure.longitude, adventure.latitude])
+          .setPopup(
+            new mapboxgl.Popup().setHTML(
+              `<strong>${adventure.title}</strong><br/>${
+                adventure.description ?? ""
+              }`
+            )
+          )
+          .addTo(map);
+      });
+    };
+
+    loadAdventures();
 
     return () => map.remove();
   }, []);
