@@ -19,29 +19,33 @@ export default function HomePage() {
       zoom: 5,
     });
 
-    const loadAdventures = async () => {
-      const res = await fetch("/api/adventures");
-      const { data } = await res.json();
+    map.on("load", async () => {
+      try {
+        const res = await fetch("/api/adventures");
+        const { data } = await res.json();
 
-      if (!data) return;
+        if (!data) return;
 
-      data.forEach((adventure: Adventure) => {
-        new mapboxgl.Marker()
-          .setLngLat([adventure.longitude, adventure.latitude])
-          .setPopup(
-            new mapboxgl.Popup().setHTML(
-              `<strong>${adventure.title}</strong><br/>${
-                adventure.description ?? ""
-              }`
+        data.forEach((adventure: Adventure) => {
+          new mapboxgl.Marker()
+            .setLngLat([adventure.longitude, adventure.latitude])
+            .setPopup(
+              new mapboxgl.Popup().setHTML(
+                `<strong>${adventure.title}</strong><br/>${
+                  adventure.description ?? ""
+                }`
+              )
             )
-          )
-          .addTo(map);
-      });
+            .addTo(map);
+        });
+      } catch (err) {
+        console.error("Failed to load adventures", err);
+      }
+    });
+
+    return () => {
+      map.remove();
     };
-
-    loadAdventures();
-
-    return () => map.remove();
   }, []);
 
   return (

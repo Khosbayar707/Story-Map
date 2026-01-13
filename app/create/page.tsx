@@ -17,7 +17,6 @@ export default function CreateAdventurePage() {
   const router = useRouter();
   const mapContainer = useRef<HTMLDivElement | null>(null);
 
-  // form state
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
@@ -25,11 +24,9 @@ export default function CreateAdventurePage() {
   );
   const [loading, setLoading] = useState(false);
 
-  // auth state
   const [userId, setUserId] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
-  /* ---------------- AUTH CHECK ---------------- */
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       setUserId(data.user?.id ?? null);
@@ -44,7 +41,6 @@ export default function CreateAdventurePage() {
     }
   }, [authLoading, userId, router]);
 
-  /* ---------------- MAP SETUP ---------------- */
   useEffect(() => {
     if (!mapContainer.current || authLoading || !userId) return;
 
@@ -71,7 +67,6 @@ export default function CreateAdventurePage() {
     return () => map.remove();
   }, [authLoading, userId]);
 
-  /* ---------------- SUBMIT ---------------- */
   const submit = async () => {
     if (!coords || !title) {
       toast.error("Please add a title and select a location.");
@@ -87,7 +82,7 @@ export default function CreateAdventurePage() {
         description,
         latitude: coords.lat,
         longitude: coords.lng,
-        user_id: userId, // REQUIRED for RLS
+        user_id: userId,
       })
       .select()
       .single();
@@ -106,7 +101,6 @@ export default function CreateAdventurePage() {
     }, 800);
   };
 
-  /* ---------------- RENDER GUARDS ---------------- */
   if (authLoading) {
     return (
       <main className="flex min-h-screen items-center justify-center">
@@ -116,10 +110,9 @@ export default function CreateAdventurePage() {
   }
 
   if (!userId) {
-    return null; // redirect handled in useEffect
+    return null;
   }
 
-  /* ---------------- UI ---------------- */
   return (
     <main className="grid min-h-screen grid-cols-1 md:grid-cols-2">
       <Card className="m-6">

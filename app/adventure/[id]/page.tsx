@@ -19,6 +19,7 @@ export default function AdventureDetailPage() {
   const [adventure, setAdventure] = useState<Adventure | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [photos, setPhotos] = useState<string[]>([]);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -44,7 +45,6 @@ export default function AdventureDetailPage() {
     loadAdventure();
   }, [id]);
 
-  // Initialize map
   useEffect(() => {
     if (!adventure) return;
 
@@ -60,6 +60,18 @@ export default function AdventureDetailPage() {
       .addTo(map);
 
     return () => map.remove();
+  }, [adventure]);
+
+  useEffect(() => {
+    if (!adventure) return;
+
+    supabase
+      .from("adventure_photos")
+      .select("image_url")
+      .eq("adventure_id", adventure.id)
+      .then(({ data }) => {
+        setPhotos(data?.map((p) => p.image_url) ?? []);
+      });
   }, [adventure]);
 
   if (error) {
@@ -78,7 +90,6 @@ export default function AdventureDetailPage() {
     );
   }
 
-  // ✅ SAFE ownership check
   const isOwner = userId === adventure.user_id;
 
   return (
@@ -92,13 +103,14 @@ export default function AdventureDetailPage() {
         Posted on {new Date(adventure.created_at).toLocaleDateString()}
       </div>
 
-      {/* 📸 Everyone can see photos */}
-      <AdventureGallery adventureId={adventure.id} />
+      <AdventureGallery photos={photos} />
 
-      {/* ⬆️ Only owner can upload */}
       {isOwner && (
         <div className="mt-4">
-          <UploadPhotoDialog adventureId={adventure.id} />
+          <UploadPhotoDialog
+            adventureId={adventure.id}
+            onUploaded={(url) => setPhotos((prev) => [url, ...prev])}
+          />
         </div>
       )}
     </main>
