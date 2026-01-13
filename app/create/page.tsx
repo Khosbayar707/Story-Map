@@ -1,9 +1,10 @@
 "use client";
 
-import { toast } from "sonner";
-import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import mapboxgl from "mapbox-gl";
+import { toast } from "sonner";
+
 import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,17 +14,39 @@ import { Button } from "@/components/ui/button";
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
 
 export default function CreateAdventurePage() {
+  const router = useRouter();
   const mapContainer = useRef<HTMLDivElement | null>(null);
+
+  // form state
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
     null
   );
-  const router = useRouter();
   const [loading, setLoading] = useState(false);
 
+  // auth state
+  const [userId, setUserId] = useState<string | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  /* ---------------- AUTH CHECK ---------------- */
   useEffect(() => {
-    if (!mapContainer.current) return;
+    supabase.auth.getUser().then(({ data }) => {
+      setUserId(data.user?.id ?? null);
+      setAuthLoading(false);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!authLoading && !userId) {
+      toast.error("You must be logged in to create an adventure.");
+      router.replace("/login");
+    }
+  }, [authLoading, userId, router]);
+
+  /* ---------------- MAP SETUP ---------------- */
+  useEffect(() => {
+    if (!mapContainer.current || authLoading || !userId) return;
 
     const map = new mapboxgl.Map({
       container: mapContainer.current,
@@ -36,7 +59,6 @@ export default function CreateAdventurePage() {
 
     map.on("click", (e) => {
       const { lng, lat } = e.lngLat;
-      console.log("Map clicked:", lat, lng);
       setCoords({ lat, lng });
 
       if (!marker) {
@@ -45,9 +67,11 @@ export default function CreateAdventurePage() {
         marker.setLngLat([lng, lat]);
       }
     });
-    return () => map.remove();
-  }, []);
 
+    return () => map.remove();
+  }, [authLoading, userId]);
+
+  /* ---------------- SUBMIT ---------------- */
   const submit = async () => {
     if (!coords || !title) {
       toast.error("Please add a title and select a location.");
@@ -63,6 +87,7 @@ export default function CreateAdventurePage() {
         description,
         latitude: coords.lat,
         longitude: coords.lng,
+        user_id: userId, // REQUIRED for RLS
       })
       .select()
       .single();
@@ -81,6 +106,20 @@ export default function CreateAdventurePage() {
     }, 800);
   };
 
+  /* ---------------- RENDER GUARDS ---------------- */
+  if (authLoading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center">
+        <p className="text-muted-foreground">Checking login…</p>
+      </main>
+    );
+  }
+
+  if (!userId) {
+    return null; // redirect handled in useEffect
+  }
+
+  /* ---------------- UI ---------------- */
   return (
     <main className="grid min-h-screen grid-cols-1 md:grid-cols-2">
       <Card className="m-6">
@@ -93,11 +132,13 @@ export default function CreateAdventurePage() {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
           />
+
           <Textarea
             placeholder="Your story"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
           />
+
           {coords && (
             <p className="text-sm text-muted-foreground">
               Selected location: {coords.lat.toFixed(4)},{" "}
@@ -110,6 +151,7 @@ export default function CreateAdventurePage() {
           </Button>
         </CardContent>
       </Card>
+
       <div ref={mapContainer} className="min-h-[400px] w-full" />
     </main>
   );
