@@ -1,5 +1,7 @@
 "use client";
 
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import { supabase } from "@/lib/supabase";
@@ -17,6 +19,8 @@ export default function CreateAdventurePage() {
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
     null
   );
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!mapContainer.current) return;
@@ -32,6 +36,7 @@ export default function CreateAdventurePage() {
 
     map.on("click", (e) => {
       const { lng, lat } = e.lngLat;
+      console.log("Map clicked:", lat, lng);
       setCoords({ lat, lng });
 
       if (!marker) {
@@ -44,13 +49,36 @@ export default function CreateAdventurePage() {
   }, []);
 
   const submit = async () => {
-    if (!coords || !title) return;
-    await supabase.from("adventures").insert({
-      title,
-      description,
-      latitude: coords.lat,
-      longitude: coords.lng,
-    });
+    if (!coords || !title) {
+      toast.error("Please add a title and select a location.");
+      return;
+    }
+
+    setLoading(true);
+
+    const { data, error } = await supabase
+      .from("adventures")
+      .insert({
+        title,
+        description,
+        latitude: coords.lat,
+        longitude: coords.lng,
+      })
+      .select()
+      .single();
+
+    setLoading(false);
+
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+
+    toast.success("Adventure created 🎉");
+
+    setTimeout(() => {
+      router.push(`/adventure/${data.id}`);
+    }, 800);
   };
 
   return (
@@ -70,10 +98,19 @@ export default function CreateAdventurePage() {
             value={description}
             onChange={(e) => setDescription(e.target.value)}
           />
-          <Button onClick={submit}>Save adventure</Button>
+          {coords && (
+            <p className="text-sm text-muted-foreground">
+              Selected location: {coords.lat.toFixed(4)},{" "}
+              {coords.lng.toFixed(4)}
+            </p>
+          )}
+
+          <Button onClick={submit} disabled={loading}>
+            {loading ? "Saving..." : "Save adventure"}
+          </Button>
         </CardContent>
       </Card>
-      <div ref={mapContainer} className="h-full" />
+      <div ref={mapContainer} className="min-h-[400px] w-full" />
     </main>
   );
 }

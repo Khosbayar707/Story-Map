@@ -5,6 +5,10 @@ import { useParams } from "next/navigation";
 import mapboxgl from "mapbox-gl";
 import { supabase } from "@/lib/supabase";
 import type { Adventure } from "@/types/adventure";
+import {
+  UploadPhotoDialog,
+  AdventureGallery,
+} from "@/components/AdventureMedia";
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
 
@@ -13,7 +17,14 @@ export default function AdventureDetailPage() {
   const id = params.id as string;
 
   const [adventure, setAdventure] = useState<Adventure | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setUserId(data.user?.id ?? null);
+    });
+  }, []);
 
   useEffect(() => {
     const loadAdventure = async () => {
@@ -33,6 +44,7 @@ export default function AdventureDetailPage() {
     loadAdventure();
   }, [id]);
 
+  // Initialize map
   useEffect(() => {
     if (!adventure) return;
 
@@ -66,6 +78,9 @@ export default function AdventureDetailPage() {
     );
   }
 
+  // ✅ SAFE ownership check
+  const isOwner = userId === adventure.user_id;
+
   return (
     <main className="mx-auto max-w-5xl p-6">
       <h1 className="mb-2 text-3xl font-bold">{adventure.title}</h1>
@@ -73,9 +88,19 @@ export default function AdventureDetailPage() {
 
       <div id="adventure-map" className="mb-6 h-[400px] w-full rounded-xl" />
 
-      <div className="text-sm text-gray-500">
+      <div className="mb-6 text-sm text-gray-500">
         Posted on {new Date(adventure.created_at).toLocaleDateString()}
       </div>
+
+      {/* 📸 Everyone can see photos */}
+      <AdventureGallery adventureId={adventure.id} />
+
+      {/* ⬆️ Only owner can upload */}
+      {isOwner && (
+        <div className="mt-4">
+          <UploadPhotoDialog adventureId={adventure.id} />
+        </div>
+      )}
     </main>
   );
 }
