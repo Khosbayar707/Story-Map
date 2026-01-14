@@ -6,4 +6,5 @@ export type Adventure = {
   latitude: number;
   longitude: number;
   created_at: string;
+  coverImage?: string | null;
 };
