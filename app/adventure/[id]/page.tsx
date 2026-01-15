@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import mapboxgl from "mapbox-gl";
 import { supabase } from "@/lib/supabase";
 import type { Adventure } from "@/types/adventure";
@@ -20,6 +21,7 @@ export default function AdventureDetailPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [photos, setPhotos] = useState<string[]>([]);
+  const router = useRouter();
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -92,6 +94,23 @@ export default function AdventureDetailPage() {
 
   const isOwner = userId === adventure.user_id;
 
+  const handleDelete = async () => {
+    const ok = confirm("Are you sure you want to delete this adventure?");
+    if (!ok) return;
+
+    const { error } = await supabase
+      .from("adventures")
+      .delete()
+      .eq("id", adventure.id);
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    router.push("/");
+  };
+
   return (
     <main className="mx-auto max-w-5xl p-6">
       <h1 className="mb-2 text-3xl font-bold">{adventure.title}</h1>
@@ -105,14 +124,27 @@ export default function AdventureDetailPage() {
 
       <AdventureGallery photos={photos} />
 
-      {isOwner && (
-        <div className="mt-4">
-          <UploadPhotoDialog
-            adventureId={adventure.id}
-            onUploaded={(url) => setPhotos((prev) => [url, ...prev])}
-          />
-        </div>
-      )}
+      <div className="mb-4 flex items-center justify-between">
+        <h1 className="text-3xl font-bold">{adventure.title}</h1>
+
+        {isOwner && (
+          <div className="flex gap-2">
+            <button
+              onClick={() => router.push(`/adventure/${adventure.id}/edit`)}
+              className="rounded-lg border px-3 py-1 text-sm hover:bg-gray-100"
+            >
+              ✏️ Edit
+            </button>
+
+            <button
+              onClick={handleDelete}
+              className="rounded-lg border border-red-300 px-3 py-1 text-sm text-red-600 hover:bg-red-50"
+            >
+              🗑 Delete
+            </button>
+          </div>
+        )}
+      </div>
     </main>
   );
 }
